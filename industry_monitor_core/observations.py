@@ -101,8 +101,11 @@ def collect_akshare_etfs(
     fetcher=fetch_history,
     sleep=time.sleep,
     min_interval=2,
+    fetch_attempts=2,
 ):
     """Collect a domain-owned ETF watchlist through the reviewed adapter."""
+    if not isinstance(fetch_attempts, int) or not 1 <= fetch_attempts <= 3:
+        raise ValueError("fetch_attempts must be between 1 and 3")
     _ensure_schema(db)
     adapter = config.get("market_adapters", {}).get("akshare-etf", {})
     if not adapter.get("enabled"):
@@ -127,12 +130,19 @@ def collect_akshare_etfs(
         }
         fetch_status = "failed"
         try:
-            if last_request is not None:
-                wait = min_interval - (time.monotonic() - last_request)
-                if wait > 0:
-                    sleep(wait)
-            frame = fetcher(item, checked_at)
-            last_request = time.monotonic()
+            frame = None
+            for attempt in range(fetch_attempts):
+                if last_request is not None:
+                    wait = min_interval - (time.monotonic() - last_request)
+                    if wait > 0:
+                        sleep(wait)
+                last_request = time.monotonic()
+                try:
+                    frame = fetcher(item, checked_at)
+                    break
+                except (AkshareFetchError, OSError):
+                    if attempt + 1 == fetch_attempts:
+                        raise
             raw_path = _archive_frame(frame, data, item["id"])
             result.update(market_observation(item, frame, checked_at))
             result.update({

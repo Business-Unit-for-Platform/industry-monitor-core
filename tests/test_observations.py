@@ -4,6 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from industry_monitor_core.akshare_etf import AkshareFetchError
 from industry_monitor_core.observations import collect_akshare_etfs
 from industry_monitor_core.public import public_observation
 from industry_monitor_core.registry import load_market_registry
@@ -80,6 +81,29 @@ class MarketObservationTests(unittest.TestCase):
             path.write_text(json.dumps(value), encoding="utf-8")
             with self.assertRaises(ValueError):
                 load_market_registry(path, "ai-computer")
+
+    def test_transient_fetch_failure_is_retried_without_fabricating_data(self):
+        calls = []
+
+        def flaky_fetcher(item, checked_at):
+            calls.append(item["code"])
+            if len(calls) == 1:
+                raise AkshareFetchError("temporary upstream failure")
+            return Frame(self.rows)
+
+        with tempfile.TemporaryDirectory() as directory:
+            db = sqlite3.connect(":memory:")
+            db.row_factory = sqlite3.Row
+            result = collect_akshare_etfs(
+                self.config, Path(directory), db, "run-retry",
+                "2026-09-25T09:00:00+08:00",
+                fetcher=flaky_fetcher, sleep=lambda _: None,
+                min_interval=0, fetch_attempts=2,
+            )[0]
+            self.assertEqual(calls, ["512480", "512480"])
+            self.assertEqual(result["status"], "ok")
+            self.assertEqual(result["values"]["close"], "1.25")
+            db.close()
 
 
 if __name__ == "__main__":
