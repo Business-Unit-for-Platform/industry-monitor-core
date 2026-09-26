@@ -8,6 +8,23 @@ from .akshare_etf import (
     normalize_history,
 )
 from .registry import load_market_registry
+from .web import (
+    FetchError,
+    Page,
+    SafeClient,
+    canonical_url,
+    date_hint,
+    digest,
+    discover,
+    excerpt,
+    extract,
+    markdown_text,
+    meta_content,
+    normalize_text,
+    now,
+    parse_date,
+    source_link,
+)
 
 __all__ = [
     "AkshareFetchError",
@@ -16,4 +33,19 @@ __all__ = [
     "load_market_registry",
     "market_observation",
     "normalize_history",
+    "FetchError",
+    "Page",
+    "SafeClient",
+    "canonical_url",
+    "date_hint",
+    "digest",
+    "discover",
+    "excerpt",
+    "extract",
+    "markdown_text",
+    "meta_content",
+    "normalize_text",
+    "now",
+    "parse_date",
+    "source_link",
 ]

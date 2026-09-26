@@ -7,6 +7,10 @@ name = "industry-monitor-core"
 version = "0.1.0"
 description = "Shared, domain-neutral adapters for industry monitoring projects"
 requires-python = ">=3.10"
+dependencies = [
+    "beautifulsoup4>=4.12.3,<5",
+    "requests>=2.32.3,<3",
+]
 
 [tool.setuptools.packages.find]
 include = ["industry_monitor_core*"]
