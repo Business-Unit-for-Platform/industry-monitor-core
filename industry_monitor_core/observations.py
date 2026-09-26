@@ -3,12 +3,14 @@
 import hashlib
 import json
 import time
+from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 from .akshare_etf import (
     AkshareFetchError,
     AkshareUnavailable,
+    LOCAL_TZ,
     fetch_history,
     market_observation,
 )
@@ -110,6 +112,7 @@ def collect_akshare_etfs(
     adapter = config.get("market_adapters", {}).get("akshare-etf", {})
     if not adapter.get("enabled"):
         return []
+    checked_date = datetime.fromisoformat(checked_at).astimezone(LOCAL_TZ).date()
     observations = []
     last_request = None
     for item in config["etfs"]:
@@ -129,43 +132,48 @@ def collect_akshare_etfs(
             "values": {},
         }
         fetch_status = "failed"
-        try:
-            frame = None
-            for attempt in range(fetch_attempts):
-                if last_request is not None:
-                    wait = min_interval - (time.monotonic() - last_request)
-                    if wait > 0:
-                        sleep(wait)
-                last_request = time.monotonic()
-                try:
-                    frame = fetcher(item, checked_at)
-                    break
-                except (AkshareFetchError, OSError):
-                    if attempt + 1 == fetch_attempts:
-                        raise
-            raw_path = _archive_frame(frame, data, item["id"])
-            result.update(market_observation(item, frame, checked_at))
-            result.update({
-                "id": item["id"],
-                "group": "etf",
-                "name": item["name"],
-                "code": item["code"],
-                "theme": item["theme"],
-                "benchmark": item["benchmark"],
-                "_raw_paths": [raw_path],
-            })
-            fetch_status = "ok"
-        except (
-            AkshareFetchError,
-            AkshareUnavailable,
-            ValueError,
-            KeyError,
-            TypeError,
-            InvalidOperation,
-            OSError,
-        ) as error:
+        if checked_date.weekday() >= 5:
+            result["status"] = "weekend_closed"
             _restore_previous(db, item["id"], result)
-            result.update({"status": "fetch_failed", "_error": str(error)})
+            fetch_status = "weekend_closed"
+        else:
+            try:
+                frame = None
+                for attempt in range(fetch_attempts):
+                    if last_request is not None:
+                        wait = min_interval - (time.monotonic() - last_request)
+                        if wait > 0:
+                            sleep(wait)
+                    last_request = time.monotonic()
+                    try:
+                        frame = fetcher(item, checked_at)
+                        break
+                    except (AkshareFetchError, OSError):
+                        if attempt + 1 == fetch_attempts:
+                            raise
+                raw_path = _archive_frame(frame, data, item["id"])
+                result.update(market_observation(item, frame, checked_at))
+                result.update({
+                    "id": item["id"],
+                    "group": "etf",
+                    "name": item["name"],
+                    "code": item["code"],
+                    "theme": item["theme"],
+                    "benchmark": item["benchmark"],
+                    "_raw_paths": [raw_path],
+                })
+                fetch_status = "ok"
+            except (
+                AkshareFetchError,
+                AkshareUnavailable,
+                ValueError,
+                KeyError,
+                TypeError,
+                InvalidOperation,
+                OSError,
+            ) as error:
+                _restore_previous(db, item["id"], result)
+                result.update({"status": "fetch_failed", "_error": str(error)})
         result["_fetch_status"] = fetch_status
         observations.append(result)
     _add_benchmark_comparison(observations)

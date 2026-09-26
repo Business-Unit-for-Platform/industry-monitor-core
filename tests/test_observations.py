@@ -105,6 +105,29 @@ class MarketObservationTests(unittest.TestCase):
             self.assertEqual(result["values"]["close"], "1.25")
             db.close()
 
+    def test_weekend_marks_market_closed_without_requesting_upstream(self):
+        def unexpected_fetcher(item, checked_at):
+            raise AssertionError("weekend observations must not call the upstream adapter")
+
+        with tempfile.TemporaryDirectory() as directory:
+            db = sqlite3.connect(":memory:")
+            db.row_factory = sqlite3.Row
+            result = collect_akshare_etfs(
+                self.config, Path(directory), db, "run-weekend",
+                "2026-09-26T09:00:00+08:00",
+                fetcher=unexpected_fetcher, sleep=lambda _: None, min_interval=0,
+            )[0]
+            self.assertEqual(result["status"], "weekend_closed")
+            self.assertEqual(result["values"], {})
+            self.assertEqual(
+                db.execute(
+                    "SELECT fetch_status FROM indicator_snapshots WHERE id=?",
+                    ("etf-sample",),
+                ).fetchone()[0],
+                "weekend_closed",
+            )
+            db.close()
+
 
 if __name__ == "__main__":
     unittest.main()
