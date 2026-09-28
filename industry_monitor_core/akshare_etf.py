@@ -11,6 +11,10 @@ from zoneinfo import ZoneInfo
 
 
 LOCAL_TZ = ZoneInfo("Asia/Shanghai")
+EASTMONEY_SOURCE_URL = "https://quote.eastmoney.com/"
+SINA_SOURCE_URL_TEMPLATE = "https://finance.sina.com.cn/fund/quotes/{code}/bc.shtml"
+EASTMONEY_PUBLISHER = "Eastmoney via AKShare"
+SINA_PUBLISHER = "Sina Finance via AKShare"
 
 
 class AkshareUnavailable(RuntimeError):
@@ -19,6 +23,20 @@ class AkshareUnavailable(RuntimeError):
 
 class AkshareFetchError(RuntimeError):
     """Raised when AKShare cannot return a usable upstream response."""
+
+
+class _MetadataFrame:
+    """Keep source metadata when a test double has no DataFrame attrs."""
+
+    def __init__(self, frame, source_url, publisher, records=None):
+        self._frame = frame
+        self._records = records
+        self.attrs = {"source_url": source_url, "publisher": publisher}
+
+    def to_dict(self, orient=None):
+        if orient == "records" and self._records is not None:
+            return self._records
+        return self._frame.to_dict(orient=orient)
 
 
 def _records(frame):
@@ -30,6 +48,26 @@ def _records(frame):
     if isinstance(frame, list):
         return frame
     raise ValueError("AKShare returned an unsupported history shape")
+
+
+def _set_metadata(frame, source_url, publisher, records=None):
+    if records is not None:
+        return _MetadataFrame(frame, source_url, publisher, records=records)
+    attrs = getattr(frame, "attrs", None)
+    if isinstance(attrs, dict):
+        attrs.update({"source_url": source_url, "publisher": publisher})
+        return frame
+    return _MetadataFrame(frame, source_url, publisher)
+
+
+def _source_metadata(frame):
+    attrs = getattr(frame, "attrs", None)
+    if not isinstance(attrs, dict):
+        return EASTMONEY_SOURCE_URL, EASTMONEY_PUBLISHER
+    return (
+        attrs.get("source_url", EASTMONEY_SOURCE_URL),
+        attrs.get("publisher", EASTMONEY_PUBLISHER),
+    )
 
 
 def _value(row, *names):
@@ -108,17 +146,29 @@ def normalize_history(frame, code, today):
         if previous is not None and previous != point:
             raise ValueError("Conflicting AKShare values for one date")
         points[point["date"]] = point
-    return sorted(points.values(), key=lambda item: item["date"], reverse=True)
+    ordered = sorted(points.values(), key=lambda item: item["date"], reverse=True)
+    for index, point in enumerate(ordered[:-1]):
+        if point["change_pct"] is not None:
+            continue
+        previous = Decimal(ordered[index + 1]["close"])
+        if previous != 0:
+            point["change_pct"] = str(
+                ((Decimal(point["close"]) / previous - 1) * 100).quantize(
+                    Decimal("0.01"), rounding=ROUND_HALF_UP
+                )
+            )
+    return ordered
 
 
 def market_observation(item, frame, checked_at):
     """Build a bounded public-safe ETF market snapshot."""
     today = datetime.fromisoformat(checked_at).astimezone(LOCAL_TZ).date()
     points = normalize_history(frame, item["code"], today)
+    source_url, publisher = _source_metadata(frame)
     result = {
         "provider": "akshare",
-        "source_url": "https://quote.eastmoney.com/",
-        "publisher": "Eastmoney via AKShare",
+        "source_url": source_url,
+        "publisher": publisher,
         "checked_at": checked_at,
         "status": "not_published",
         "data_date": None,
@@ -172,9 +222,37 @@ def fetch_history(item, checked_at, ak_module=None):
     today = datetime.fromisoformat(checked_at).astimezone(LOCAL_TZ).date()
     start = (today - timedelta(days=70)).strftime("%Y%m%d")
     end = today.strftime("%Y%m%d")
+    primary_error = None
     try:
-        return ak_module.fund_etf_hist_em(
+        frame = ak_module.fund_etf_hist_em(
             symbol=item["code"], period="daily", start_date=start, end_date=end, adjust=""
         )
+        if not _records(frame):
+            raise ValueError("AKShare primary history response was empty")
+        return _set_metadata(frame, EASTMONEY_SOURCE_URL, EASTMONEY_PUBLISHER)
     except Exception as error:
-        raise AkshareFetchError("AKShare history request failed") from error
+        primary_error = error
+
+    try:
+        fallback = getattr(ak_module, "fund_etf_hist_sina")
+        market = "sh" if item["code"].startswith(("5", "6")) else "sz"
+        frame = fallback(symbol=f"{market}{item['code']}")
+        window_start = today - timedelta(days=70)
+        records = [
+            row for row in _records(frame)
+            if window_start <= _day(_value(row, "日期", "date")) <= today
+        ]
+        if not records:
+            raise ValueError("AKShare fallback history response was empty")
+        return _set_metadata(
+            frame,
+            SINA_SOURCE_URL_TEMPLATE.format(code=item["code"]),
+            SINA_PUBLISHER,
+            records=records,
+        )
+    except Exception as fallback_error:
+        raise AkshareFetchError(
+            "AKShare history request failed "
+            f"(primary={type(primary_error).__name__}; "
+            f"fallback={type(fallback_error).__name__})"
+        ) from fallback_error

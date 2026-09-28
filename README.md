@@ -10,12 +10,18 @@ Current shared capability:
 
 - safety-bounded HTTP client, URL/date/text helpers, reviewed link discovery,
   and bounded HTML article extraction
-- reviewed AKShare ETF history adapter
+- reviewed AKShare ETF history adapter with a Sina fallback when the primary
+  Eastmoney history endpoint is unavailable
 - bounded normalization of public daily market rows
 - configurable ETF observation registry validation
+- configuration-driven fact, event, relationship, and industry-chain
+  annotations with bounded daily signal aggregation
 
 The package deliberately does not decide whether an ETF is relevant to a
 business domain, make investment recommendations, or publish a report.
+Industry intelligence is similarly bounded: the package matches labels from a
+business-owned taxonomy and aggregates observed articles. It does not infer
+causality, market size, rankings, or investment conclusions.
 
 ## Architecture boundary
 
