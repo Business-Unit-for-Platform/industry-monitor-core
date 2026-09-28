@@ -15,6 +15,9 @@ industry monitors. It is intentionally domain-neutral and public.
   attachment-link registration, and external-candidate registration.
 - Domain-neutral AKShare ETF normalization, registry validation, snapshot
   orchestration, and public-field allowlists.
+- Domain-neutral industry intelligence annotations: event types, chain stages,
+  technology tags, application scenarios, entities, relations, evidence
+  levels, and bounded signal aggregation.
 
 ### Business-unit repository
 
@@ -35,6 +38,9 @@ domain config / adapters
 industry_monitor_core.web + industry_monitor_core.akshare_etf
           |
           v
+industry_monitor_core.intelligence
+          |
+          v
 domain archive -> domain report -> domain publication / notification
 ```
 
@@ -53,3 +59,12 @@ unchanged.
 
 The compatibility period is an intentional SRP/DRY trade-off to preserve the
 current production path while the shared API is validated.
+
+## Intelligence boundary
+
+Each business repository supplies an `intelligence.json` taxonomy. The shared
+package validates that registry, matches terms against already extracted
+article facts, records bounded relations, and aggregates labels for a report.
+It does not own company lists, source-specific semantics, raw text, or domain
+conclusions. A label count means only that the reviewed articles matched the
+configured vocabulary during the reporting window.

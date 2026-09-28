@@ -8,6 +8,12 @@ from .akshare_etf import (
     normalize_history,
 )
 from .registry import load_market_registry
+from .intelligence import (
+    aggregate_signals,
+    annotate_article,
+    load_intelligence_registry,
+    public_intelligence,
+)
 from .web import (
     FetchError,
     Page,
@@ -31,6 +37,10 @@ __all__ = [
     "AkshareUnavailable",
     "fetch_history",
     "load_market_registry",
+    "aggregate_signals",
+    "annotate_article",
+    "load_intelligence_registry",
+    "public_intelligence",
     "market_observation",
     "normalize_history",
     "FetchError",
