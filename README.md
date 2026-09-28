@@ -10,7 +10,8 @@ Current shared capability:
 
 - safety-bounded HTTP client, URL/date/text helpers, reviewed link discovery,
   and bounded HTML article extraction
-- reviewed AKShare ETF history adapter
+- reviewed AKShare ETF history adapter with a Sina fallback when the primary
+  Eastmoney history endpoint is unavailable
 - bounded normalization of public daily market rows
 - configurable ETF observation registry validation
 
