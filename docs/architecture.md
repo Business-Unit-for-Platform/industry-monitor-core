@@ -13,8 +13,6 @@ industry monitors. It is intentionally domain-neutral and public.
   Markdown escaping.
 - Generic page model, reviewed article-link discovery, bounded body extraction,
   attachment-link registration, and external-candidate registration.
-- Domain-neutral AKShare ETF normalization, registry validation, snapshot
-  orchestration, and public-field allowlists.
 - Domain-neutral industry intelligence annotations: event types, chain stages,
   technology tags, application scenarios, entities, relations, evidence
   levels, and bounded signal aggregation.
@@ -35,7 +33,7 @@ industry monitors. It is intentionally domain-neutral and public.
 domain config / adapters
           |
           v
-industry_monitor_core.web + industry_monitor_core.akshare_etf
+industry_monitor_core.web
           |
           v
 industry_monitor_core.intelligence
@@ -45,20 +43,10 @@ domain archive -> domain report -> domain publication / notification
 ```
 
 The core package never imports a business repository and never reads a source
-registry, a credential, or a domain data directory. A third business unit
-should add configuration or a small domain adapter rather than copying a
-business repository's data or report code.
-
-## Migration rule
-
-Migration is incremental. A business repository may first install a pinned
-core commit and use a compatibility import while its existing tests remain
-green. The duplicate implementation is deleted only after integration tests
-prove that URL, robots, extraction, archive, and public-report behavior is
-unchanged.
-
-The compatibility period is an intentional SRP/DRY trade-off to preserve the
-current production path while the shared API is validated.
+registry, a credential, a domain data directory, or a market-data watchlist.
+A third business unit should add configuration or a small domain adapter in
+its own repository rather than copying a business repository's data or report
+code. Securities and ETF collection belongs to stock-research.
 
 ## Intelligence boundary
 

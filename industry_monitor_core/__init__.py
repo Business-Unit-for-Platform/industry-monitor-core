@@ -1,13 +1,5 @@
 """Domain-neutral adapters for industry monitoring projects."""
 
-from .akshare_etf import (
-    AkshareFetchError,
-    AkshareUnavailable,
-    fetch_history,
-    market_observation,
-    normalize_history,
-)
-from .registry import load_market_registry
 from .intelligence import (
     aggregate_signals,
     annotate_article,
@@ -33,16 +25,10 @@ from .web import (
 )
 
 __all__ = [
-    "AkshareFetchError",
-    "AkshareUnavailable",
-    "fetch_history",
-    "load_market_registry",
     "aggregate_signals",
     "annotate_article",
     "load_intelligence_registry",
     "public_intelligence",
-    "market_observation",
-    "normalize_history",
     "FetchError",
     "Page",
     "SafeClient",
