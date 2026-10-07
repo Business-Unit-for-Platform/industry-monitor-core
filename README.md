@@ -2,6 +2,16 @@
 
 Shared, domain-neutral building blocks for business-unit industry monitors.
 
+The platform layer has two deliberately separate responsibilities:
+
+- this package provides basic public-information collection mechanics;
+- `Business-Unit-for-Stock/stock-research` provides securities, ETF, and market
+  data independently.
+
+Energy, AI, and any future business unit own their own industry source lists
+and industry interpretation on top of this package. No industry repository
+inherits a stock or ETF collector from the platform layer.
+
 This package contains no source registries, company lists, credentials, report
 titles, or business-unit data. A domain project owns its own configuration and
 public-report policy.
@@ -10,16 +20,12 @@ Current shared capability:
 
 - safety-bounded HTTP client, URL/date/text helpers, reviewed link discovery,
   and bounded HTML article extraction
-- reviewed AKShare ETF history adapter with a Sina fallback when the primary
-  Eastmoney history endpoint is unavailable
-- bounded normalization of public daily market rows
-- configurable ETF observation registry validation
 - configuration-driven fact, event, relationship, and industry-chain
   annotations with bounded daily signal aggregation
 
-The package deliberately does not decide whether an ETF is relevant to a
-business domain, make investment recommendations, or publish a report.
-Industry intelligence is similarly bounded: the package matches labels from a
+The package deliberately does not collect securities, ETFs, prices, or other
+market data. Financial research belongs to the stock-research repository.
+Industry intelligence is bounded: the package matches labels from a
 business-owned taxonomy and aggregates observed articles. It does not infer
 causality, market size, rankings, or investment conclusions.
 
@@ -37,6 +43,6 @@ hosts, HTTPS downgrade, unreviewed redirects, robots blocks, challenge pages,
 restricted archives, unsupported media, and oversized responses. Attachments
 are recorded as links and are not downloaded.
 
-The two current business repositories may retain compatibility wrappers while
-they migrate to this package. New business logic must not be added to those
-wrappers.
+Business repositories own source registries, company lists, financial inputs,
+publication policy, and deployment. The core package must remain reusable and
+domain-neutral.
