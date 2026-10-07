@@ -2,6 +2,16 @@
 
 Shared, domain-neutral building blocks for business-unit industry monitors.
 
+The platform layer has two deliberately separate responsibilities:
+
+- this package provides basic public-information collection mechanics;
+- `Business-Unit-for-Stock/stock-research` provides securities, ETF, and market
+  data independently.
+
+Energy, AI, and any future business unit own their own industry source lists
+and industry interpretation on top of this package. No industry repository
+inherits a stock or ETF collector from the platform layer.
+
 This package contains no source registries, company lists, credentials, report
 titles, or business-unit data. A domain project owns its own configuration and
 public-report policy.
